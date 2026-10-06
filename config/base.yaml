@@ -1,0 +1,9 @@
+simulation:
+  step_length: 1.0
+  seed: 42
+
+traffic:
+  demand_level: normal
+
+policy:
+  name: fixed

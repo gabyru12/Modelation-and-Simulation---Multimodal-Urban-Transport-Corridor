@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# IDEs and local settings
+.vscode/
+.idea/
+*.code-workspace
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Temporary and generated outputs
+*.log
+*.tmp
+*.bak
+tmp/
+temp/
+
+# Simulation outputs and large generated results
+results/raw/*
+results/processed/*
+!results/raw/.gitkeep
+!results/processed/.gitkeep
+*.tripinfo.xml
+*.summary.xml
+*.emissions.xml
+*.fcd.xml
+*.statistic.xml
+
+# OS files
+.DS_Store
+Thumbs.db
