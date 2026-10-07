@@ -1,0 +1,19 @@
+# SUMO Engine: Conceptual Reference
+
+This folder condenses the official Eclipse SUMO documentation (https://sumo.dlr.de/docs/) into a set of conceptual essays. Each file follows the structure of the upstream manual and aims to give a developer who has never touched SUMO a working mental model of what the engine is, how its parts fit together, which files a simulation needs, and how a simulated driver arrives at a decision. The essays deliberately describe the tool itself. Nothing in them depends on any particular project's folder layout or workflow, so they can be read as a stand-alone reference.
+
+A small correction to a common misreading of the acronym: SUMO stands for *Simulation of Urban MObility*. It is an open-source, microscopic, space-continuous and time-discrete traffic simulation suite, released under the Eclipse Public License 2.0 and developed mainly by the German Aerospace Center (DLR).
+
+## Reading order
+
+The first file, [01-introduction-and-basic-usage.md](01-introduction-and-basic-usage.md), explains what SUMO is, why it is built as a suite of cooperating programs rather than a monolith, and how those programs are configured and launched. [02-network-building.md](02-network-building.md) describes the road-network model and every route by which a network comes into existence, from hand-written XML to OpenStreetMap import. [03-demand-modelling.md](03-demand-modelling.md) covers the other half of any scenario, the traffic that uses the network, including vehicle types, routes, flows, persons, public transport and the many data sources and tools that generate demand.
+
+[04-simulation.md](04-simulation.md) turns a network plus demand into a running simulation, explains time stepping and loading order, describes saving and restoring state, and introduces the SUMO-JuPedSim coupling for dense pedestrian crowds. [05-simulation-output.md](05-simulation-output.md) catalogues what the engine can record. [06-traci.md](06-traci.md) and [07-libsumo.md](07-libsumo.md) describe the two ways to steer a simulation from an external program while it runs.
+
+[08-driver-decision-making.md](08-driver-decision-making.md) is the longest conceptual piece. It follows a single vehicle through a time step and lists every parameter, model and environmental condition that can influence what it does. [09-traffic-management.md](09-traffic-management.md) covers traffic lights and the other infrastructure objects that shape flow, [10-traffic-modes.md](10-traffic-modes.md) covers pedestrians, bicycles, trains and ships, and [11-additional-features.md](11-additional-features.md) collects emissions, electric vehicles, emergency vehicles, taxis, GLOSA, platooning and similar optional capabilities.
+
+[12-model-details.md](12-model-details.md) explains the engine's internals: speed determination, insertion, permissions, capacity, intersections, randomness, routing, the sublane model, the mesoscopic model, distances and friction. [13-common-problems.md](13-common-problems.md) diagnoses teleporting, jams, turn-around artefacts and unexpected lane changes. [14-additional-tools.md](14-additional-tools.md) closes with netedit, sumolib, the XML and visualisation tools, theory, and the application manuals.
+
+## Provenance and caveats
+
+The content was compiled from the live documentation pages in October 2026, and SUMO changes quickly, so version-specific statements (for example a default that changed in a given release) should be checked against the manual for the installed version. The upstream pages for the individual car-following and lane-changing models were partly stubs or not retrievable at compile time. Where [08-driver-decision-making.md](08-driver-decision-making.md) explains the Krauss safe-speed idea and the structure of the lane-change model, it therefore relies on the parameter tables and overview pages in the manual together with the published description of those models, and it says so where relevant.

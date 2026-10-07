@@ -1,0 +1,53 @@
+# Model Details
+
+## Vehicle speed
+
+The speed a vehicle can reach at any moment is the minimum of several independent limits, which is the simplest way to think about the model. When driving freely the target is the smaller of `maxSpeed`, `speedFactor × desiredMaxSpeed` and `speedFactor × speedLimit`. The default `desiredMaxSpeed` is effectively unlimited for cars, 1.39 metres per second for pedestrians and 5.56 for bicycles. On top of this, the car-following model enforces a safe speed behind the leader, acceleration and deceleration bounds restrict how fast the speed may change in a step, junction rules require braking before minor links (a vehicle on a minor road slows to a few metres from the stop line, and zipper merges start adapting about a hundred metres ahead), lane changes can force slowdowns, stops and waypoints demand braking profiles, and variable speed signs and calibrators alter the limit. A change of the limit through any route therefore propagates to the speed of all drivers who see it.
+
+## Vehicle insertion
+
+A vehicle enters the network only if it can do so safely. Its body from rear to front plus `minGap` must not overlap another vehicle, the car-following model must consider the insertion speed safe relative to the leader, and the vehicle must be able to brake for the next junction or stop. If these conditions are not met the vehicle waits in an insertion queue and retries in each step, and `--max-depart-delay` removes vehicles that have waited too long while `--max-num-vehicles` caps the population. The attributes `departLane`, `departPos` and `departSpeed` determine insertion capacity. On multi-lane roads, values such as `random`, `free`, `best` or `best_prob` (which puts faster vehicles on the overtaking lane) spread vehicles over lanes, `departPos="last"` places a vehicle directly behind the previous one, and `departSpeed` values such as `max`, `avg` or `last` avoid the bottleneck that arises when vehicles must enter at standstill. By default insertion on an edge stops after the first failure, which is fast in congestion, `--eager-insert` retries all delayed vehicles, and `insertionChecks` can switch off specific checks for special cases.
+
+## Vehicle permissions
+
+Access is controlled by **vehicle classes**. Every vehicle type has a `vClass` (default passenger), every lane lists the classes it allows through `allow` and `disallow`, and a vehicle may use only lanes that allow its class. The same mechanism produces bus lanes, bicycle lanes, sidewalks, rail tracks and shipping channels. Permissions can come from OSM typemaps, plain XML, netedit's convenience operations or TraCI changes at runtime, and routing respects them, so a vehicle with no permitted path between its origin and destination yields a routing error that is easy to mistake for a missing connection. The class `ignoring` can use any edge, and `pedestrian` should be reserved for persons. For specialised domains, `duarouter --restriction-params` allows numerical restrictions such as ship draught or axle load.
+
+## Road capacity
+
+The capacity of one lane is the inverse of the gross time headway between successive vehicles. At constant speed that headway is the time to cover the vehicle length plus `minGap`, plus `tau`, so capacity equals 3600 divided by that number. At high speeds `tau` dominates, which is why highway capacity is about headway, and at low speeds length and gap dominate, which is why urban queues discharge at a rate dictated by vehicle length. Realised capacity is below the theoretical value because of variable desired speeds, the random slowdown `sigma`, and imperfect insertion spacing. The manual documents empirical insertion capacities and the settings that reach about 2,500 vehicles per hour per lane, which are described in [13-common-problems.md](13-common-problems.md).
+
+## Intersection dynamics
+
+Right-of-way at an intersection is decided from the junction type and the link state, as described in [08-driver-decision-making.md](08-driver-decision-making.md). Three cases exist: vehicles on links with priority pass without slowing, vehicles at zipper junctions adapt their speed to the other stream, and vehicles on minor links decelerate until the visibility distance and then decide on time gaps. The geometry of the junction matters: stop lines are where the lane ends for minor roads, about one metre ahead for traffic lights, and internal junctions let vehicles wait inside, for instance for a left turn. Internal lanes have speed limits derived from their radius, and the keep-clear heuristic prevents vehicles from blocking junctions when the exit is full.
+
+## Randomness
+
+SUMO is deterministic by default. Its random numbers come from Mersenne Twister generators with a default seed, and several independent generators decouple vehicle loading, flow generation, driving dynamics and device assignment, so that changing one aspect does not reshuffle the others. Random elements are the driver imperfection `sigma`, the speed factor, type and route distributions, random departure attributes, binomial flows from `probability` and Poisson flows from `period="exp(x)"`, lateral imperfection `lcSigma` and the random choice of equipped vehicles. `--seed` fixes a value, `--random` seeds from the clock and overrides the seed, and `runSeeds.py` automates repeated runs. Reproducibility across platforms is imperfect where results depend on math library details such as logarithms in the EIDM and driver-state models or on projection library versions. Running a scenario with several seeds and averaging is the right way to treat sigma-driven variation statistically.
+
+## Routing and rerouting
+
+Vehicles minimise travel time by default, but effort-based routing can minimise other quantities such as distance, emissions or cost, and priority-weighted routing penalises low-priority edges. For travel times the simulation consults, in order, vehicle-specific edge data set by TraCI, global weight files, global edge weights set by TraCI, and finally the minimum travel time computed from length and the speed allowed for the vehicle. Rerouting can be triggered by a device at a period, by a rerouter at a location, or by TraCI. Aggregated routing modes use smoothed travel times from the rerouting device, possibly with random factors and route preferences, which produces more diverse and stable route choice. Vehicles can ignore closures that are only visible at the closed edge using transient permissions. The routing algorithms themselves were discussed in [03-demand-modelling.md](03-demand-modelling.md).
+
+## Sublane model
+
+The sublane model replaces discrete lanes with a continuous lateral coordinate and is enabled by `--lateral-resolution`, the width in metres of the lateral resolution, which should divide the lane width evenly to avoid artefacts. Vehicles have an alignment preference, a lateral speed limit and a lateral safety gap, and may encroach on neighbouring vehicles in a controlled way. Narrow vehicles can ride side by side in one lane, bicycles and motorcycles can filter through traffic, and rescue lanes can form. The trade-off is explicit in the documentation: the smaller the resolution, the more expensive each step. When only smoother lane-change visuals are wanted, `--lanechange.duration` gives continuous lane changes without the full model.
+
+## Opposite-direction driving
+
+Overtaking via the oncoming lane requires the network to know which edges are neighbours in opposite directions, supplied by `<neigh>` information produced with `--opposites.guess`, by netedit or by the edge file, and the two edges must have equal length. A vehicle overtakes only if no oncoming traffic is present within a look-ahead of at most 150 metres, the manoeuvre can be finished in time, the junction beyond allows straight priority passage, and its `lcOpposite` eagerness is positive. The model ignores visibility restrictions caused by road geometry or other vehicles.
+
+## Safety
+
+SUMO does not guarantee collision freedom. The Krauss model is designed to keep safe gaps, but unsafe parameters, such as `tau` below the step length, or deliberate settings such as junction violations, can cause collisions. `--collision.action` chooses what happens: teleport the follower to the next edge (default), warn only, do nothing, or remove both vehicles, with `--collision.stoptime` letting vehicles stop first so that pile-ups propagate. `--collision.mingap-factor` controls whether violating `minGap` already counts as a collision, and `--collision.check-junctions` checks overlaps of vehicle shapes inside intersections. Emergency braking up to `emergencyDecel` is the last line of defence. The surrogate-safety device measures time-to-collision and related metrics for post-hoc analysis.
+
+## Mesoscopic model
+
+The mesoscopic mode, enabled with `--mesosim`, reads the same inputs but replaces continuous motion with queues. Each edge is split into segments of up to `--meso-edgelength` (100 metres by default), vehicles are held in queues per segment, and the time to traverse a segment is calculated from segment occupancy, classified as free or jammed, and from minimum headway times (`--meso-tauff` and its variants). Vehicles have no instantaneous speed, only an estimated average. Junction handling is configurable from none to full, with penalties for traffic lights. The model is on the order of 100 times faster, which suits very large networks and assignment, but it supports neither lane-specific output, sublane or opposite driving, nor lane-area and multi-entry-exit detectors.
+
+## Lengths and distances
+
+SUMO uses four coordinate systems: Cartesian metres, geographic longitude and latitude, lane-based coordinates (edge, lane, position) and linear referencing along routes (kilometrage). Only lane-based coordinates drive the simulation, and the others serve output and visualisation. All lanes of an edge share one length, which may differ from the drawn geometry on curves, with minimum length 0.1 metres, and abstract networks may deliberately shorten geometry while keeping realistic driving distance. Edges can carry a start distance for linear referencing, so that positions can be reported in kilometrage.
+
+## Friction
+
+The friction device scales a vehicle's maximum speed by a polynomial factor of the lane's friction coefficient (default 1), after adding Gaussian noise to model imperfect perception, with a configurable standard deviation and offset. Friction can be set in the network, through TraCI at runtime, and read back per vehicle, which allows scenarios such as sudden ice on a stretch of road.
